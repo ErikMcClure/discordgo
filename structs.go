@@ -14,7 +14,6 @@ package discordgo
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -143,9 +142,9 @@ type Invite struct {
 	MaxAge    int       `json:"max_age"`
 	Uses      int       `json:"uses"`
 	MaxUses   int       `json:"max_uses"`
-	XkcdPass  string    `json:"xkcdpass"`
 	Revoked   bool      `json:"revoked"`
 	Temporary bool      `json:"temporary"`
+	Unique    bool      `json:"unique"`
 }
 
 // ChannelType is the type of a Channel
@@ -177,6 +176,18 @@ type Channel struct {
 	ParentID             string                 `json:"parent_id"`
 }
 
+// A ChannelEdit holds Channel Feild data for a channel edit.
+type ChannelEdit struct {
+	Name                 string                 `json:"name,omitempty"`
+	Topic                string                 `json:"topic,omitempty"`
+	NSFW                 bool                   `json:"nsfw,omitempty"`
+	Position             int                    `json:"position"`
+	Bitrate              int                    `json:"bitrate,omitempty"`
+	UserLimit            int                    `json:"user_limit,omitempty"`
+	PermissionOverwrites []*PermissionOverwrite `json:"permission_overwrites,omitempty"`
+	ParentID             string                 `json:"parent_id,omitempty"`
+}
+
 // A PermissionOverwrite holds permission overwrite data for a Channel
 type PermissionOverwrite struct {
 	ID    string `json:"id"`
@@ -205,7 +216,7 @@ func (e *Emoji) APIName() string {
 	return e.ID
 }
 
-// VerificationLevel type defination
+// VerificationLevel type definition
 type VerificationLevel int
 
 // Constants for VerificationLevel levels from 0 to 3 inclusive
@@ -315,43 +326,56 @@ type Presence struct {
 	Since  *int     `json:"since"`
 }
 
+// GameType is the type of "game" (see GameType* consts) in the Game struct
+type GameType int
+
+// Valid GameType values
+const (
+	GameTypeGame GameType = iota
+	GameTypeStreaming
+)
+
 // A Game struct holds the name of the "playing .." game for a user
 type Game struct {
-	Name string `json:"name"`
-	Type int    `json:"type"`
-	URL  string `json:"url,omitempty"`
+	Name          string     `json:"name"`
+	Type          GameType   `json:"type"`
+	URL           string     `json:"url,omitempty"`
+	Details       string     `json:"details,omitempty"`
+	State         string     `json:"state,omitempty"`
+	TimeStamps    TimeStamps `json:"timestamps,omitempty"`
+	Assets        Assets     `json:"assets,omitempty"`
+	ApplicationID string     `json:"application_id,omitempty"`
+	Instance      int8       `json:"instance,omitempty"`
+	// TODO: Party and Secrets (unknown structure)
 }
 
-// UnmarshalJSON unmarshals json to Game struct
-func (g *Game) UnmarshalJSON(bytes []byte) error {
-	temp := &struct {
-		Name json.Number     `json:"name"`
-		Type json.RawMessage `json:"type"`
-		URL  string          `json:"url"`
+// A TimeStamps struct contains start and end times used in the rich presence "playing .." Game
+type TimeStamps struct {
+	EndTimestamp   int64 `json:"end,omitempty"`
+	StartTimestamp int64 `json:"start,omitempty"`
+}
+
+// UnmarshalJSON unmarshals JSON into TimeStamps struct
+func (t *TimeStamps) UnmarshalJSON(b []byte) error {
+	temp := struct {
+		End   float64 `json:"end,omitempty"`
+		Start float64 `json:"start,omitempty"`
 	}{}
-	err := json.Unmarshal(bytes, temp)
+	err := json.Unmarshal(b, &temp)
 	if err != nil {
 		return err
 	}
-	g.URL = temp.URL
-	g.Name = temp.Name.String()
-
-	if temp.Type != nil {
-		err = json.Unmarshal(temp.Type, &g.Type)
-		if err == nil {
-			return nil
-		}
-
-		s := ""
-		err = json.Unmarshal(temp.Type, &s)
-		if err == nil {
-			g.Type, err = strconv.Atoi(s)
-		}
-
-		return err
-	}
-
+	t.EndTimestamp = int64(temp.End)
+	t.StartTimestamp = int64(temp.Start)
 	return nil
+}
+
+// An Assets struct contains assets and labels used in the rich presence "playing .." Game
+type Assets struct {
+	LargeImageID string `json:"large_image,omitempty"`
+	SmallImageID string `json:"small_image,omitempty"`
+	LargeText    string `json:"large_text,omitempty"`
+	SmallText    string `json:"small_text,omitempty"`
 }
 
 // A Member stores user information for Guild members.
@@ -384,7 +408,7 @@ type Settings struct {
 	DeveloperMode          bool               `json:"developer_mode"`
 }
 
-// Status type defination
+// Status type definition
 type Status string
 
 // Constants for Status with the different current available status
