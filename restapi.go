@@ -577,14 +577,6 @@ func memberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 // Guild returns a Guild structure of a specific Guild.
 // guildID   : The ID of a Guild
 func (s *Session) Guild(guildID string) (st *Guild, err error) {
-	if s.StateEnabled {
-		// Attempt to grab the guild from State first.
-		st, err = s.State.Guild(guildID)
-		if err == nil {
-			return
-		}
-	}
-
 	body, err := s.RequestWithBucketID("GET", EndpointGuild(guildID), nil, EndpointGuild(guildID))
 	if err != nil {
 		return
@@ -776,6 +768,32 @@ func (s *Session) GuildMember(guildID, userID string) (st *Member, err error) {
 	return
 }
 
+// GuildMemberAdd force joins a user to the guild.
+//  accessToken   : Valid access_token for the user.
+//  guildID       : The ID of a Guild.
+//  userID        : The ID of a User.
+//  nick          : Value to set users nickname to
+//  roles         : A list of role ID's to set on the member.
+//  mute          : If the user is muted.
+//  deaf          : If the user is deafened.
+func (s *Session) GuildMemberAdd(accessToken, guildID, userID, nick string, roles []string, mute, deaf bool) (err error) {
+
+	data := struct {
+		AccessToken string   `json:"access_token"`
+		Nick        string   `json:"nick,omitempty"`
+		Roles       []string `json:"roles,omitempty"`
+		Mute        bool     `json:"mute,omitempty"`
+		Deaf        bool     `json:"deaf,omitempty"`
+	}{accessToken, nick, roles, mute, deaf}
+
+	_, err = s.RequestWithBucketID("PUT", EndpointGuildMember(guildID, userID), data, EndpointGuildMember(guildID, ""))
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
 // GuildMemberDelete removes the given user from the given guild.
 // guildID   : The ID of a Guild.
 // userID    : The ID of a User
@@ -895,12 +913,12 @@ func (s *Session) GuildChannels(guildID string) (st []*Channel, err error) {
 // GuildChannelCreate creates a new channel in the given guild
 // guildID   : The ID of a Guild.
 // name      : Name of the channel (2-100 chars length)
-// ctype     : Tpye of the channel (voice or text)
-func (s *Session) GuildChannelCreate(guildID, name, ctype string) (st *Channel, err error) {
+// ctype     : Type of the channel
+func (s *Session) GuildChannelCreate(guildID, name string, ctype ChannelType) (st *Channel, err error) {
 
 	data := struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
+		Name string      `json:"name"`
+		Type ChannelType `json:"type"`
 	}{name, ctype}
 
 	body, err := s.RequestWithBucketID("POST", EndpointGuildChannels(guildID), data, EndpointGuildChannels(guildID))
@@ -1881,12 +1899,13 @@ func (s *Session) WebhookWithToken(webhookID, token string) (st *Webhook, err er
 // webhookID: The ID of a webhook.
 // name     : The name of the webhook.
 // avatar   : The avatar of the webhook.
-func (s *Session) WebhookEdit(webhookID, name, avatar string) (st *Role, err error) {
+func (s *Session) WebhookEdit(webhookID, name, avatar, channelID string) (st *Role, err error) {
 
 	data := struct {
-		Name   string `json:"name,omitempty"`
-		Avatar string `json:"avatar,omitempty"`
-	}{name, avatar}
+		Name      string `json:"name,omitempty"`
+		Avatar    string `json:"avatar,omitempty"`
+		ChannelID string `json:"channel_id,omitempty"`
+	}{name, avatar, channelID}
 
 	body, err := s.RequestWithBucketID("PATCH", EndpointWebhook(webhookID), data, EndpointWebhooks)
 	if err != nil {
