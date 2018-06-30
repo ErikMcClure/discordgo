@@ -177,6 +177,10 @@ type Invite struct {
 	Revoked   bool      `json:"revoked"`
 	Temporary bool      `json:"temporary"`
 	Unique    bool      `json:"unique"`
+
+	// will only be filled when using InviteWithCounts
+	ApproximatePresenceCount int `json:"approximate_presence_count"`
+	ApproximateMemberCount   int `json:"approximate_member_count"`
 }
 
 // ChannelType is the type of a Channel
@@ -235,8 +239,16 @@ type Channel struct {
 	// A list of permission overwrites present for the channel.
 	PermissionOverwrites []*PermissionOverwrite `json:"permission_overwrites"`
 
+	// The user limit of the voice channel.
+	UserLimit int `json:"user_limit"`
+
 	// The ID of the parent channel, if the channel is under a category
 	ParentID string `json:"parent_id"`
+}
+
+// Mention returns a string which mentions the channel
+func (c *Channel) Mention() string {
+	return fmt.Sprintf("<#%s>", c.ID)
 }
 
 // A ChannelEdit holds Channel Feild data for a channel edit.
@@ -808,6 +820,7 @@ type MessageReaction struct {
 	MessageID string `json:"message_id"`
 	Emoji     Emoji  `json:"emoji"`
 	ChannelID string `json:"channel_id"`
+	GuildID   string `json:"guild_id,omitempty"`
 }
 
 // GatewayBotResponse stores the data for the gateway/bot response
