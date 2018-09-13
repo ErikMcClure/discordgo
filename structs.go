@@ -281,6 +281,19 @@ type Emoji struct {
 	Animated      bool     `json:"animated"`
 }
 
+// MessageFormat returns a correctly formatted Emoji for use in Message content and embeds
+func (e *Emoji) MessageFormat() string {
+	if e.ID != "" && e.Name != "" {
+		if e.Animated {
+			return "<a:" + e.APIName() + ">"
+		}
+
+		return "<:" + e.APIName() + ">"
+	}
+
+	return e.APIName()
+}
+
 // APIName returns an correctly formatted API name for use in the MessageReactions endpoints.
 func (e *Emoji) APIName() string {
 	if e.ID != "" && e.Name != "" {
@@ -584,7 +597,7 @@ type Member struct {
 	GuildID string `json:"guild_id"`
 
 	// The time at which the member joined the guild, in ISO8601.
-	JoinedAt string `json:"joined_at"`
+	JoinedAt Timestamp `json:"joined_at"`
 
 	// The nickname of the member, if they have one.
 	Nick string `json:"nick"`
@@ -600,6 +613,11 @@ type Member struct {
 
 	// A list of IDs of the roles which are possessed by the member.
 	Roles []string `json:"roles"`
+}
+
+// Mention creates a member mention
+func (m *Member) Mention() string {
+	return "<@!" + m.User.ID + ">"
 }
 
 // A Settings stores data for a specific users Discord client settings.
@@ -897,7 +915,9 @@ const (
 		PermissionKickMembers |
 		PermissionBanMembers |
 		PermissionManageServer |
-		PermissionAdministrator
+		PermissionAdministrator |
+		PermissionManageWebhooks |
+		PermissionManageEmojis
 )
 
 // Block contains Discord JSON Error Response codes
@@ -916,6 +936,7 @@ const (
 	ErrCodeUnknownToken       = 10012
 	ErrCodeUnknownUser        = 10013
 	ErrCodeUnknownEmoji       = 10014
+	ErrCodeUnknownWebhook     = 10015
 
 	ErrCodeBotsCannotUseEndpoint  = 20001
 	ErrCodeOnlyBotsCanUseEndpoint = 20002
