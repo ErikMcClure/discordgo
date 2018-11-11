@@ -267,6 +267,13 @@ type helloOp struct {
 // FailedHeartbeatAcks is the Number of heartbeat intervals to wait until forcing a connection restart.
 const FailedHeartbeatAcks time.Duration = 5 * time.Millisecond
 
+// HeartbeatLatency returns the latency between heartbeat acknowledgement and heartbeat send.
+func (s *Session) HeartbeatLatency() time.Duration {
+
+	return s.LastHeartbeatAck.Sub(s.LastHeartbeatSent)
+
+}
+
 // heartbeat sends regular heartbeats to Discord so it knows the client
 // is still connected.  If you do not send these heartbeats Discord will
 // disconnect the websocket connection after a few seconds.
@@ -289,6 +296,7 @@ func (s *Session) heartbeat(wsConn *websocket.Conn, listening <-chan interface{}
 		sequence := atomic.LoadInt64(s.sequence)
 		s.log(LogDebug, "sending gateway websocket heartbeat seq %d", sequence)
 		s.wsMutex.Lock()
+		s.LastHeartbeatSent = time.Now().UTC()
 		err = wsConn.WriteJSON(heartbeatOp{1, sequence})
 		s.wsMutex.Unlock()
 		if err != nil || time.Now().UTC().Sub(last) > (heartbeatIntervalMsec*FailedHeartbeatAcks) {
@@ -607,11 +615,7 @@ func (s *Session) ChannelVoiceJoin(gID, cID string, mute, deaf bool) (voice *Voi
 	voice.session = s
 	voice.Unlock()
 
-	// Send the request to Discord that we want to join the voice channel
-	data := voiceChannelJoinOp{4, voiceChannelJoinData{&gID, &cID, mute, deaf}}
-	s.wsMutex.Lock()
-	err = s.wsConn.WriteJSON(data)
-	s.wsMutex.Unlock()
+	err = s.ChannelVoiceJoinManual(gID, cID, mute, deaf)
 	if err != nil {
 		return
 	}
@@ -644,10 +648,6 @@ func (s *Session) ChannelVoiceJoinManual(gID, cID string, mute, deaf bool) (err 
 	s.wsMutex.Lock()
 	err = s.wsConn.WriteJSON(data)
 	s.wsMutex.Unlock()
-	if err != nil {
-		return
-	}
-
 	return
 }
 
