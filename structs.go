@@ -82,6 +82,9 @@ type Session struct {
 	// The http client used for REST requests
 	Client *http.Client
 
+	// The user agent used for REST APIs
+	UserAgent string
+
 	// Stores the last HeartbeatAck that was recieved (in UTC)
 	LastHeartbeatAck time.Time
 
@@ -872,6 +875,7 @@ const (
 	PermissionVoiceDeafenMembers
 	PermissionVoiceMoveMembers
 	PermissionVoiceUseVAD
+	PermissionVoicePrioritySpeaker = 1 << (iota + 2)
 )
 
 // Constants for general management.
@@ -907,7 +911,8 @@ const (
 		PermissionVoiceMuteMembers |
 		PermissionVoiceDeafenMembers |
 		PermissionVoiceMoveMembers |
-		PermissionVoiceUseVAD
+		PermissionVoiceUseVAD |
+		PermissionVoicePrioritySpeaker
 	PermissionAllChannel = PermissionAllText |
 		PermissionAllVoice |
 		PermissionCreateInstantInvite |
