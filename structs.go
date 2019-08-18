@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -223,6 +224,10 @@ type Channel struct {
 	// guaranteed to be an ID of a valid message.
 	LastMessageID string `json:"last_message_id"`
 
+	// The timestamp of the last pinned message in the channel.
+	// Empty if the channel has no pinned messages.
+	LastPinTimestamp Timestamp `json:"last_pin_timestamp"`
+
 	// Whether the channel is marked as NSFW.
 	NSFW bool `json:"nsfw"`
 
@@ -286,6 +291,7 @@ type Emoji struct {
 	Managed       bool     `json:"managed"`
 	RequireColons bool     `json:"require_colons"`
 	Animated      bool     `json:"animated"`
+	Available     bool     `json:"available"`
 }
 
 // MessageFormat returns a correctly formatted Emoji for use in Message content and embeds
@@ -340,6 +346,17 @@ type MfaLevel int
 const (
 	MfaLevelNone MfaLevel = iota
 	MfaLevelElevated
+)
+
+// PremiumTier type definition
+type PremiumTier int
+
+// Constants for PremiumTier levels from 0 to 3 inclusive
+const (
+	PremiumTierNone PremiumTier = iota
+	PremiumTier1
+	PremiumTier2
+	PremiumTier3
 )
 
 // A Guild holds all data related to a specific Discord Guild.  Guilds are also
@@ -446,6 +463,34 @@ type Guild struct {
 
 	// The Channel ID to which system messages are sent (eg join and leave messages)
 	SystemChannelID string `json:"system_channel_id"`
+
+	// the vanity url code for the guild
+	VanityURLCode string `json:"vanity_url_code"`
+
+	// the description for the guild
+	Description string `json:"description"`
+
+	// The hash of the guild's banner
+	Banner string `json:"banner"`
+
+	// The premium tier of the guild
+	PremiumTier PremiumTier `json:"premium_tier"`
+
+	// The total number of users currently boosting this server
+	PremiumSubscriptionCount int `json:"premium_subscription_count"`
+}
+
+// IconURL returns a URL to the guild's icon.
+func (g *Guild) IconURL() string {
+	if g.Icon == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(g.Icon, "a_") {
+		return EndpointGuildIconAnimated(g.ID, g.Icon)
+	}
+
+	return EndpointGuildIcon(g.ID, g.Icon)
 }
 
 // A UserGuild holds a brief version of a Guild
@@ -620,6 +665,9 @@ type Member struct {
 
 	// A list of IDs of the roles which are possessed by the member.
 	Roles []string `json:"roles"`
+
+	// When the user used their Nitro boost on the server
+	PremiumSince Timestamp `json:"premium_since"`
 }
 
 // Mention creates a member mention
