@@ -200,6 +200,8 @@ const (
 	ChannelTypeGuildVoice
 	ChannelTypeGroupDM
 	ChannelTypeGuildCategory
+	ChannelTypeGuildNews
+	ChannelTypeGuildStore
 )
 
 // A Channel holds all data related to an individual Discord channel.
@@ -255,6 +257,10 @@ type Channel struct {
 
 	// The ID of the parent channel, if the channel is under a category
 	ParentID string `json:"parent_id"`
+
+	// Amount of seconds a user has to wait before sending another message (0-21600)
+	// bots, as well as users with the permission manage_messages or manage_channel, are unaffected
+	RateLimitPerUser int `json:"rate_limit_per_user"`
 }
 
 // Mention returns a string which mentions the channel
@@ -321,12 +327,13 @@ func (e *Emoji) APIName() string {
 // VerificationLevel type definition
 type VerificationLevel int
 
-// Constants for VerificationLevel levels from 0 to 3 inclusive
+// Constants for VerificationLevel levels from 0 to 4 inclusive
 const (
 	VerificationLevelNone VerificationLevel = iota
 	VerificationLevelLow
 	VerificationLevelMedium
 	VerificationLevelHigh
+	VerificationLevelVeryHigh
 )
 
 // ExplicitContentFilterLevel type definition
@@ -1009,7 +1016,7 @@ const (
 	ErrCodeMissingAccess                             = 50001
 	ErrCodeInvalidAccountType                        = 50002
 	ErrCodeCannotExecuteActionOnDMChannel            = 50003
-	ErrCodeEmbedCisabled                             = 50004
+	ErrCodeEmbedDisabled                             = 50004
 	ErrCodeCannotEditFromAnotherUser                 = 50005
 	ErrCodeCannotSendEmptyMessage                    = 50006
 	ErrCodeCannotSendMessagesToThisUser              = 50007
