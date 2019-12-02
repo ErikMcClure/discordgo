@@ -1003,8 +1003,12 @@ func (s *Session) GuildRoles(guildID string) (st []*Role, err error) {
 // GuildRoleCreate returns a new Guild Role.
 // guildID: The ID of a Guild.
 func (s *Session) GuildRoleCreate(guildID string) (st *Role, err error) {
-
-	body, err := s.RequestWithBucketID("POST", EndpointGuildRoles(guildID), nil, EndpointGuildRoles(guildID))
+  // A change in discord's API requires the JSON payload to exist
+	data := struct {
+		Name        string `json:"name"`
+  }{""}
+  
+	body, err := s.RequestWithBucketID("POST", EndpointGuildRoles(guildID), data, EndpointGuildRoles(guildID))
 	if err != nil {
 		return
 	}
