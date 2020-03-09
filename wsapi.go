@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -399,9 +398,9 @@ func (s *Session) UpdateStatusComplex(usd UpdateStatusData) (err error) {
 }
 
 type requestGuildMembersData struct {
-	GuildID string `json:"guild_id"`
-	Query   string `json:"query"`
-	Limit   int    `json:"limit"`
+	GuildIDs []string `json:"guild_id"`
+	Query    string   `json:"query"`
+	Limit    int      `json:"limit"`
 }
 
 type requestGuildMembersOp struct {
@@ -411,22 +410,41 @@ type requestGuildMembersOp struct {
 
 // RequestGuildMembers requests guild members from the gateway
 // The gateway responds with GuildMembersChunk events
-// guildID  : The ID of the guild to request members of
+// guildID  : Single Guild ID to request members of
 // query    : String that username starts with, leave empty to return all members
 // limit    : Max number of items to return, or 0 to request all members matched
-func (s *Session) RequestGuildMembers(guildID, query string, limit int) (err error) {
+func (s *Session) RequestGuildMembers(guildID string, query string, limit int) (err error) {
+	data := requestGuildMembersData{
+		GuildIDs: []string{guildID},
+		Query:    query,
+		Limit:    limit,
+	}
+	err = s.requestGuildMembers(data)
+	return
+}
+
+// RequestGuildMembersBatch requests guild members from the gateway
+// The gateway responds with GuildMembersChunk events
+// guildID  : Slice of guild IDs to request members of
+// query    : String that username starts with, leave empty to return all members
+// limit    : Max number of items to return, or 0 to request all members matched
+func (s *Session) RequestGuildMembersBatch(guildIDs []string, query string, limit int) (err error) {
+	data := requestGuildMembersData{
+		GuildIDs: guildIDs,
+		Query:    query,
+		Limit:    limit,
+	}
+	err = s.requestGuildMembers(data)
+	return
+}
+
+func (s *Session) requestGuildMembers(data requestGuildMembersData) (err error) {
 	s.log(LogInformational, "called")
 
 	s.RLock()
 	defer s.RUnlock()
 	if s.wsConn == nil {
 		return ErrWSNotFound
-	}
-
-	data := requestGuildMembersData{
-		GuildID: guildID,
-		Query:   query,
-		Limit:   limit,
 	}
 
 	s.wsMutex.Lock()
@@ -722,55 +740,42 @@ func (s *Session) onVoiceServerUpdate(st *VoiceServerUpdate) {
 	}
 }
 
-type identifyProperties struct {
-	OS              string `json:"$os"`
-	Browser         string `json:"$browser"`
-	Device          string `json:"$device"`
-	Referer         string `json:"$referer"`
-	ReferringDomain string `json:"$referring_domain"`
-}
-
-type identifyData struct {
-	Token          string             `json:"token"`
-	Properties     identifyProperties `json:"properties"`
-	LargeThreshold int                `json:"large_threshold"`
-	Compress       bool               `json:"compress"`
-	Shard          *[2]int            `json:"shard,omitempty"`
-}
-
 type identifyOp struct {
-	Op   int          `json:"op"`
-	Data identifyData `json:"d"`
+	Op   int      `json:"op"`
+	Data Identify `json:"d"`
 }
 
 // identify sends the identify packet to the gateway
 func (s *Session) identify() error {
+	s.log(LogDebug, "called")
 
-	properties := identifyProperties{runtime.GOOS,
-		"Discordgo v" + VERSION,
-		"",
-		"",
-		"",
+	// TODO: This is a temporary block of code to help
+	// maintain backwards compatability
+	if s.Compress == false {
+		s.Identify.Compress = false
 	}
 
-	data := identifyData{s.Token,
-		properties,
-		250,
-		s.Compress,
-		nil,
+	// TODO: This is a temporary block of code to help
+	// maintain backwards compatability
+	if s.Token != "" && s.Identify.Token == "" {
+		s.Identify.Token = s.Token
 	}
 
+	// TODO: Below block should be refactored so ShardID and ShardCount
+	// can be deprecated and their usage moved to the Session.Identify
+	// struct
 	if s.ShardCount > 1 {
 
 		if s.ShardID >= s.ShardCount {
 			return ErrWSShardBounds
 		}
 
-		data.Shard = &[2]int{s.ShardID, s.ShardCount}
+		s.Identify.Shard = &[2]int{s.ShardID, s.ShardCount}
 	}
 
-	op := identifyOp{2, data}
-
+	// Send Identify packet to Discord
+	op := identifyOp{2, s.Identify}
+	s.log(LogDebug, "Identify Packet: \n%#v", op)
 	s.wsMutex.Lock()
 	err := s.wsConn.WriteJSON(op)
 	s.wsMutex.Unlock()
